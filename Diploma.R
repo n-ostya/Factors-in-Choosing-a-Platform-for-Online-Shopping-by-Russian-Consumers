@@ -23,6 +23,7 @@ library(randomNames)
 library(lavaan)
 library(lavaanPlot)
 library(semPlot)
+library(corrplot)
 
 ######################################################
 ###### Статистика по выборке ###########
@@ -32,12 +33,10 @@ Statistic <- read_excel("Statistic.xlsx")
 Statistic <- na.omit(Statistic)
 View(Statistic)
 summary(Statistic)
-table(Statistic$Job_stat)
 
 Age <- Statistic$Age
 qplot(Age) + geom_bar(colour="black")
 ggplot(Statistic, aes(x=Age)) + geom_bar(colour="black")
-
 
 ################################################################################################
 ###### SAATY ##########################
@@ -59,6 +58,10 @@ Full <- Full %>% select(-cr) %>% subset(Full$cr < 0.5)
 Index <- Index %>% select(-cr) %>% subset(Index$cr < 0.5)
 ID_Saaty <- Index$ID
 Index <- Index %>% select(-ID)
+
+cr <- Index %>% 
+  ahp.mat(atts = att, negconvert = TRUE) %>% 
+  ahp.cr(att)
 mean(cr)
 
 #матрицы парных сравнений
@@ -78,17 +81,22 @@ error
 mean <- Index %>%
   ahp.mat(atts = att, negconvert = TRUE) %>% 
   ahp.aggpref(att, method = "eigen")
-
-#скорректированные средние
-mean <- edited %>% 
-  ahp.aggpref(att, method = "eigen")
-sum(mean)
 mean <- mean/sum(mean)
 mean
+mean_S <- mean
 
 sd_w <- Index %>%
   ahp.mat(atts = att, negconvert = TRUE) %>% 
   ahp.aggpref(att, method = "eigen", aggmethod = "sd")
+
+#какие результаты усредненные получили
+t(data.frame(mean, sd_w))
+
+#скорректированные средние
+mean <- edited %>% 
+  ahp.aggpref(att, method = "eigen")
+mean <- mean/sum(mean)
+mean
 
 sd_w <- edited %>% 
   ahp.aggpref(att, method = "eigen", aggmethod = "sd")
@@ -235,13 +243,6 @@ new$ID <- ID_Saaty
 B <- scale(new[1:8])
 fviz_nbclust(B, kmeans, method = "wss")
 
-gap_stat <- clusGap(B,
-                    FUN = kmeans,
-                    nstart = 25,
-                    K.max = 10,
-                    B = 50)
-fviz_gap_stat(gap_stat) 
-
 km <- kmeans(B, centers = 4, nstart = 25)
 km
 fviz_cluster(km, data = new, geom = "point")
@@ -249,24 +250,49 @@ new$cluster <- km$cluster
 Full_clust <- new
 new <- cbind(new, Full[29:36])
 table(km$cluster)
-#для дем характеристик
-new <- na.omit(new)
-mean <- aggregate(new, list(new$cluster), FUN= mean )
-mean[11:18]
 
-fviz_nbclust(B, kmeans, method = "wss")
-
-ggplot(Statistic, aes(x=Age)) + geom_bar(colour="black")
 #для средних и отклонений
 mean <- aggregate(new, by= list (cluster=km$cluster), mean)
 sd <- aggregate(new, by= list (cluster=km$cluster), sd)
+
+data_mean <- as.data.frame(matrix(nrow = 8, ncol = 2))
+data_mean$V1 <- t(mean[1,2:9])
+data_mean$V2 <- t(sd[1,2:9])
+colnames(data_mean) <- c("mean","sd")
+data_mean$names <- c("Web", "Pay", "Ass", "Deliv", "Peop", "Exp", "Loyal", "Card")
+ggplot(data_mean) +
+  geom_bar(aes(x = names, y = mean), stat="identity", fill="skyblue", alpha = 0.8) +
+  geom_errorbar(aes(x = names, y = mean, ymin = mean - 2*sd, ymax = mean + 2*sd),
+                width = 0.4, colour = "orange", alpha = 0.9, size = 0.8) + theme_bw() +
+  labs(x = "Характеристика", y = "Вес")
+
+data_mean <- as.data.frame(matrix(nrow = 8, ncol = 2))
+data_mean$V1 <- t(mean[2,2:9])
+data_mean$V2 <- t(sd[2,2:9])
+colnames(data_mean) <- c("mean","sd")
+data_mean$names <- c("Web", "Pay", "Ass", "Deliv", "Peop", "Exp", "Loyal", "Card")
+ggplot(data_mean) +
+  geom_bar(aes(x = names, y = mean), stat="identity", fill="skyblue", alpha = 0.8) +
+  geom_errorbar(aes(x = names, y = mean, ymin = mean - 2*sd, ymax = mean + 2*sd),
+                width = 0.4, colour = "orange", alpha = 0.9, size = 0.8) + theme_bw() +
+  labs(x = "Характеристика", y = "Вес")
+
+data_mean <- as.data.frame(matrix(nrow = 8, ncol = 2))
+data_mean$V1 <- t(mean[3,2:9])
+data_mean$V2 <- t(sd[3,2:9])
+colnames(data_mean) <- c("mean","sd")
+data_mean$names <- c("Web", "Pay", "Ass", "Deliv", "Peop", "Exp", "Loyal", "Card")
+ggplot(data_mean) +
+  geom_bar(aes(x = names, y = mean), stat="identity", fill="skyblue", alpha = 0.8) +
+  geom_errorbar(aes(x = names, y = mean, ymin = mean - 2*sd, ymax = mean + 2*sd),
+                width = 0.4, colour = "orange", alpha = 0.9, size = 0.8) + theme_bw() +
+  labs(x = "Характеристика", y = "Вес")
 
 data_mean <- as.data.frame(matrix(nrow = 8, ncol = 2))
 data_mean$V1 <- t(mean[4,2:9])
 data_mean$V2 <- t(sd[4,2:9])
 colnames(data_mean) <- c("mean","sd")
 data_mean$names <- c("Web", "Pay", "Ass", "Deliv", "Peop", "Exp", "Loyal", "Card")
-
 ggplot(data_mean) +
   geom_bar(aes(x = names, y = mean), stat="identity", fill="skyblue", alpha = 0.8) +
   geom_errorbar(aes(x = names, y = mean, ymin = mean - 2*sd, ymax = mean + 2*sd),
@@ -274,12 +300,11 @@ ggplot(data_mean) +
   labs(x = "Характеристика", y = "Вес")
 
 round(mean[2:9], digits = 4)
-View(round(mean[2:9] - 2*sd[2:9], digits = 3))
 round(mean[2:9] + 2*sd[2:9], digits = 3)
 
 ################################################################################################
-###### OZON ##########################
-######################################
+###### Выбор модели для факторного анализа ##########
+#####################################################
 
 Ozon <- read_excel("Ozon.xlsx")
 Ozon <- Ozon %>% select(-Fool) %>% subset(Ozon$Fool > 5)
@@ -309,9 +334,7 @@ Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
 # регрессия
 "
 fit1 <- sem(m, data = Ozon)
-summary(fit, standardized=TRUE, fit.measures=TRUE)
-View(fit1)
-#Веса
+summary(fit1, standardized=TRUE, fit.measures=TRUE)
 
 semPaths(fit1, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
          residuals = FALSE, sizeMan = 2, what = "path", label.cex = 2.5, sizeLat = 4,
@@ -326,20 +349,13 @@ Deliv =~ Return + NoDamage + Delivery + Pickpoint + Polite + Notification + Reje
 Peop =~ Relatives + Friends	
 Exp =~ Negative + Support + Response	
 Loyal =~ Loyalty + Bonuses + Sale	
-Card =~ Photo + Character + Comment	+ Fool
+Card =~ Photo + Character + Comment	
 Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
 # регрессия
 Reg ~ Index
 "
 fit2 <- sem(m2, data = Ozon)
 summary(fit2, standardized=TRUE, fit.measures=TRUE)
-
-#Веса
-Wild_lat <- as.data.frame(lavPredict(fit2))
-mod <- lm(Index ~ ., data = Wild_lat)
-summary(mod)
-coef <- mod$coefficients[2:8]
-coef <- coef/sum(coef)
 
 #визуализация
 semPaths(fit2, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
@@ -354,17 +370,13 @@ Deliv =~ Return + NoDamage + Delivery + Pickpoint + Polite + Notification + Reje
 Peop =~ Relatives + Friends	
 Exp =~ Negative + Support + Response	
 Loyal =~ Loyalty + Bonuses + Sale	
-Card =~ Photo + Character + Comment	+ Fool
+Card =~ Photo + Character + Comment	
 # регрессия
-Reg2 ~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card 
+Reg ~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card 
 
 "
 fit3 <- sem(m3, data = Ozon)
 summary(fit3, standardized=TRUE, fit.measures=TRUE)
-
-#Веса
-table(Ozon$Reg)
-Ozon <- Ozon %>% mutate(Reg2 = ifelse(Reg > 1, 1, 0))
 
 #визуализация
 semPaths(fit3, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
@@ -379,69 +391,22 @@ Deliv =~ Return + NoDamage + Delivery + Pickpoint + Polite + Notification + Reje
 Peop =~ Relatives + Friends	
 Exp =~ Negative + Support + Response	
 Loyal =~ Loyalty + Bonuses + Sale	
-Card =~ Photo + Character + Comment	+ Fool
+Card =~ Photo + Character + Comment	
 Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
 # регрессия
-Reg2 ~ Index + JobStat	+ Income	+ Education	+ FamilyStat	+ Children 
+Reg ~ Index + JobStat	+ Income	+ Education	+ FamilyStat	+ Children 
 "
 fit4 <- sem(m4, data = Ozon)
 summary(fit4, standardized=TRUE, fit.measures=TRUE)
-
-#Веса
-
 
 #визуализация
 semPaths(fit4, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
          residuals = FALSE, sizeMan = 2, what = "path", label.cex = 2.5, sizeLat = 4,
          edge.color="black")
 
-
-################################################################################################
-###### WILDBERRIES ##########################
-######################################
-
-Wild <- read_excel("Wildberries.xlsx")
-Wild <- Wild %>% select(-Fool) %>% subset(Wild$Fool > 5)
-View(Wild)
-Wild <- na.omit(Wild)
-corrplot(cor(Wild[2:8]))
-
-corrplot(cor(Wild[9:12])) #post pay minus
-corrplot(cor(Wild[13:15]))
-corrplot(cor(Wild[16:24])) #postpone minus
-corrplot(cor(Wild[25:26]))
-corrplot(cor(Wild[27:29]))
-corrplot(cor(Wild[30:33]))
-Wild$Reg <- Wild$Regularity
-Wild <- Wild[2:45]
-
-#### Структурная модель ####
-m <- "# факторные модели
-Web  =~ NoAnnoy + NoInfNoise	+ Interface + EasyOrder +Filters + Mobile + Categories	
-Pay =~ CardLink + Confidentiality + MoneyBack	+ Postpay
-Ass =~ Match+ LowPrices + Satisfaction
-Deliv =~ Return + NoDamage + Delivery + Pickpoint + Postpon +Polite + Notification + Rejection + Fit	
-Peop =~ Relatives + Friends	
-Exp =~ Negative + Support + Response	
-Loyal =~ Loyalty + Bonuses + Sale	
-Card =~ Photo + Character + Comment	
-Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
-# регрессия
-"
-fit2 <- sem(m, data = Wild)
-summary(fit, standardized=TRUE, fit.measures=TRUE)
-
-#Веса
-W2 <- as.data.frame(inspect(fit2, what = "std")[['lambda']])
-
-semPaths(fit2, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
-         residuals = FALSE, sizeMan = 2, what = "path", label.cex = 2.5, sizeLat = 4,
-         edge.color="black")
-
-
 ########################################################################
-###### Claster ############
-###########################
+###### Claster демографические характеристики #########
+#######################################################
 people <- na.omit(Saaty)
 
 #отбор признаков
@@ -464,9 +429,9 @@ people$clust <- Clast_number
 #визуализируем средние
 flexclust::barchart(mod, people_new, k = 3)
 
-ggplot(people, aes (fill=clust, y = mean(Age))) +
-  geom_bar(position='dodge', stat='identity')
+###############################################################################
 ########### Saaty for clust ##############
+##########################################
 clust1 <- people %>% subset(people$clust == 1)
 clust2 <- people %>% subset(people$clust == 2)
 clust3 <- people %>% subset(people$clust == 3)
@@ -479,14 +444,12 @@ clust3 <- clust3[1:28]
 #матрицы парных сравнений
 Cl1_ahp <- clust1 %>% 
   ahp.mat(att, negconvert = T)
-#Коррекция Харкера
 edited_cl1 <- ahp.harker(Cl1_ahp, att, iterations = 10, stopcr = 0.1)
 
 #средние оценки
 #скорректированные средние
 mean <- edited_cl1 %>% 
   ahp.aggpref(att, method = "eigen")
-sum(mean)
 mean <- mean/sum(mean)
 mean
 
@@ -494,306 +457,22 @@ sd_w <- Index %>%
   ahp.mat(atts = att, negconvert = TRUE) %>% 
   ahp.aggpref(att, method = "eigen", aggmethod = "sd")
 
-#сколько меньше 0.1?
-cr_cl1 <- clust1 %>% 
-  ahp.mat(atts = att, negconvert = TRUE) %>% 
-  ahp.cr(att)
-table(cr_cl1 <= 0.1)
-mean(cr_cl1)
-
 #Cluster 2
 #матрицы парных сравнений
 Cl2_ahp <- clust2 %>% 
   ahp.mat(att, negconvert = T)
-#Коррекция Харкера
 edited_cl2 <- ahp.harker(Cl2_ahp, att, iterations = 10, stopcr = 0.1)
 
 #средние оценки
 #скорректированные средние
 mean <- edited_cl2 %>% 
   ahp.aggpref(att, method = "eigen")
-sum(mean)
 mean <- mean/sum(mean)
 mean
 
 sd_w <- Index %>%
   ahp.mat(atts = att, negconvert = TRUE) %>% 
   ahp.aggpref(att, method = "eigen", aggmethod = "sd")
-
-#сколько меньше 0.1?
-cr_cl2 <- clust2 %>% 
-  ahp.mat(atts = att, negconvert = TRUE) %>% 
-  ahp.cr(att)
-table(cr_cl2 <= 0.1)
-mean(cr_cl2)
-
-cr <- edited_cl2 %>% 
-  ahp.cr(att)
-table(cr <= 0.1)
-mean(cr)
-
-
-#Cluster 3
-#сколько меньше 0.1?
-cr_cl3 <- clust3 %>% 
-  ahp.mat(atts = att, negconvert = TRUE) %>% 
-  ahp.cr(att)
-table(cr_cl3 <= 0.1)
-mean(cr_cl3)
-
-#######################################################################################
-######## Generation groups #############
-########################################
-min_cr <- 1
-Saaty1 <- Saaty[1:28]
-for (i in 1:2000) {
-  cat("iteration #", i, "\n")
-  Saaty1$group <- sample(c(rep(0,189),rep(1, 189)), 378)
-  Group1 <- Saaty1 %>% subset(Saaty1$group == 0)
-  Group2 <- Saaty1 %>% subset(Saaty1$group == 1)
-  #Group1 <- Group1[1:28]
-  #Group2 <- Group2[1:28]
-  
-  cr_G1 <- Group1 %>% 
-    ahp.mat(atts = att, negconvert = TRUE) %>% 
-    ahp.cr(att)
-  m_G1 <- mean(cr_G1)
-  cr_G2 <- Group2 %>% 
-    ahp.mat(atts = att, negconvert = TRUE) %>% 
-    ahp.cr(att)
-  m_G2 <- mean(cr_G2)
-  
-  cr_mean <- mean(m_G1, m_G2)
-  if (cr_mean < min_cr) {
-    min_cr <- cr_mean
-    groups <- Saaty1$group
-  }
-}
-min_cr
-table(groups)
-
-
-################################################################################################
-###### PCA ##########################
-#####################################
-new <- matrix(nrow=294, ncol=8) #378
-for (i in 1:294) {
-  cat("iteration #", i, "\n")
-  new[i,] <- Full[i,1:28] %>%
-    ahp.mat(atts = att, negconvert = TRUE) %>% 
-    ahp.aggpref(att, method = "eigen")
-}
-new <- as.data.frame(new)
-colnames(new) <- c("Web", "Pay", "Ass", "Deliv", "Peop", "Exp", "Loyal", "Card")
-corrplot(cor(new))
-#стандартизируем
-pca_scale <- scale(new)
-pca_mod <- PCA(pca_scale)
-summary(pca_mod)
-#каменистая осыпь
-fviz_eig(pca_mod, addlabels = TRUE) 
-
-#интерпретация главных компонент
-corrplot(pca_mod$var$coord, is.corr = FALSE, addCoef.col = TRUE)
-#интерпретация главных компонент через квадраты косинусов
-corrplot(pca_mod$var$cos2, is.corr = FALSE)
-
-mod_clust <- HCPC(pca_mod, nb.clust = 3)
-fviz_cluster(mod_clust, geom = "point")
-
-mod_clust$desc.var$quanti$`1`
-mod_clust$desc.var$quanti$`2`
-mod_clust$desc.var$quanti$`3`
-mod_clust$desc.var$quanti$`4`
-?HCPC
-library(stargazer)
-stargazer(mod_clust$desc.var$quanti$`4`, 
-          title="Fourth cluster", type="html", 
-          column.labels=c("Probability to fill correct"), 
-          df=FALSE, digits=3, out = "first cluster.htm")
-
-################################################################################################
-###### OZON ##########################
-######################################
-
-Ozon <- read_excel("Ozon.xlsx")
-Ozon <- na.omit(Ozon)
-table(Ozon$Fool >= 6)
-Ozon <- Ozon %>% subset(Ozon$Fool >=6)
-corrplot(cor(Ozon[2:8]))
-corrplot(cor(Ozon[9:12])) #post pay minus
-corrplot(cor(Ozon[13:15]))
-corrplot(cor(Ozon[16:24])) #postpone minus
-corrplot(cor(Ozon[25:26]))
-corrplot(cor(Ozon[27:29]))
-corrplot(cor(Ozon[30:33]))
-Ozon$Reg <- Ozon$Regularity
-Ozon <- Ozon[2:45]
-
-#### Структурная модель ####
-m <- "# факторные модели
-Web  =~ NoAnnoy + NoInfNoise	+ Interface + EasyOrder +Filters + Mobile + Categories	
-Pay =~ CardLink + Confidentiality + MoneyBack	
-Ass =~ Match+ LowPrices + Satisfaction
-Deliv =~ Return + NoDamage + Delivery + Pickpoint + Polite + Notification + Rejection + Fit	
-Peop =~ Relatives + Friends	
-Exp =~ Negative + Support + Response	
-Loyal =~ Loyalty + Bonuses + Sale	
-Card =~ Photo + Character + Comment
-Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
-# регрессия
-"
-fit <- sem(m, data = Ozon)
-summary(fit, standardized=TRUE, fit.measures=TRUE)
-
-#визуализация
-semPaths(fit, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
-         residuals = FALSE, sizeMan = 2, what = "path", label.cex = 2.5, sizeLat = 4,
-         edge.color="black")
-coef(fit)
-?coef()
-Ozon2 <- Ozon[1:34]
-B <- scale(Ozon2)
-fviz_nbclust(B, kmeans, method = "wss") 
-gap_stat <- clusGap(B,
-                    FUN = kmeans,
-                    nstart = 25,
-                    K.max = 10,
-                    B = 50)
-fviz_gap_stat(gap_stat) 
-
-km <- kmeans(B, centers = 4, nstart = 25)
-km
-fviz_cluster(km, data = Ozon, geom = "point")
-
-#для дем характеристик
-new <- na.omit(new)
-mean <- aggregate(new, list(new$cluster), FUN= mean )
-mean[11:18]
-
-ggplot(Statistic, aes(x=Age)) + geom_bar(colour="black")
-#для средних и отклонений
-mean <- aggregate(Ozon2, by= list (cluster=km$cluster), mean)
-sd <- aggregate(Ozon, by= list (cluster=km$cluster), sd)
-
-########################################################################
-###### Claster ############
-###########################
-people <- na.omit(Saaty)
-
-#отбор признаков
-people_new <- people %>% select(Age, Education, Income)
-data_new_scale <- scale(people_new)
-
-
-#вычисляем расстояния
-D1 <- dist(data_new_scale, method = "euclidean")
-table(D == D1)
-mod <- hclust(D)
-mod1 <- hclust(D, method = "ward.D")
-plot(mod1, ann = FALSE, hang = -1, labels = FALSE)
-?dist
-#сделаем 3 кластера
-rect.hclust(mod1, k = 3)
-
-#обрежем
-Clast_number <- cutree(mod, k = 3)
-table(Clast_number)
-people$clust <- Clast_number
-
-#визуализируем средние
-flexclust::barchart(mod, people_new, k = 3)
-
-########### Saaty for clust ##############
-clust1 <- people %>% subset(people$clust == 1)
-clust2 <- people %>% subset(people$clust == 2)
-clust3 <- people %>% subset(people$clust == 3)
-
-#### Структурная модель ####
-m <- "# факторные модели
-Web  =~ NoAnnoy + NoInfNoise	+ Interface + EasyOrder +Filters + Mobile + Categories	
-Pay =~ CardLink + Confidentiality + MoneyBack	
-Ass =~ Match+ LowPrices + Satisfaction
-Deliv =~ Return + NoDamage + Delivery + Pickpoint + Polite + Notification + Rejection + Fit	
-Peop =~ Relatives + Friends	
-Exp =~ Negative + Support + Response	
-Loyal =~ Loyalty + Bonuses + Sale	
-Card =~ Photo + Character + Comment
-Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
-# регрессия
-"
-fit <- sem(m, data = clust3)
-summary(fit, standardized=TRUE, fit.measures=TRUE)
-
-#визуализация
-semPaths(fit, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
-         residuals = FALSE, sizeMan = 2, what = "path", label.cex = 2.5, sizeLat = 4,
-         edge.color="black")
-
-################################################################################################
-###### WILDBERRIES ##########################
-######################################
-
-Wild <- read_excel("Wildberries.xlsx")
-Wild <- na.omit(Wild)
-table(Wild$Fool >= 6)
-Wild <- Wild %>% subset(Wild$Fool >=6)
-
-corrplot(cor(Wild[2:8]))
-corrplot(cor(Wild[9:12])) #post pay minus
-corrplot(cor(Wild[13:15]))
-corrplot(cor(Wild[16:24])) #postpone minus
-corrplot(cor(Wild[25:26]))
-corrplot(cor(Wild[27:29]))
-corrplot(cor(Wild[30:33]))
-Wild$Reg <- Wild$Regularity
-Wild <- Wild[2:45]
-
-#### Структурная модель ####
-m <- "# факторные модели
-Web  =~ NoAnnoy + NoInfNoise	+ Interface + EasyOrder +Filters + Mobile + Categories	
-Pay =~ CardLink + Confidentiality + MoneyBack	 + Postpay
-Ass =~ Match+ LowPrices + Satisfaction
-Deliv =~ Return + NoDamage + Delivery + Pickpoint + Postpon + Polite + Notification + Rejection + Fit	
-Peop =~ Relatives + Friends	
-Exp =~ Negative + Support + Response	
-Loyal =~ Loyalty + Bonuses + Sale	
-Card =~ Photo + Character + Comment	+ Fool
-Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
-# регрессия
-"
-fit <- sem(m, data = Wild)
-summary(fit, standardized=TRUE, fit.measures=TRUE)
-
-#визуализация
-semPaths(fit, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
-         residuals = FALSE, sizeMan = 2, what = "path", label.cex = 2.5, sizeLat = 4,
-         edge.color="black")
-
-########################################################################
-###### Claster ############
-###########################
-people <- na.omit(Wild)
-
-#отбор признаков
-people_new <- people %>% select(Age, Education, Income)
-data_new_scale <- scale(people_new)
-
-#вычисляем расстояния
-D <- dist(data_new_scale)
-mod <- hclust(D)
-plot(mod, ann = FALSE, hang = -1, labels = FALSE)
-
-#сделаем 3 кластера
-rect.hclust(mod, k = 4)
-
-#обрежем
-Clast_number <- cutree(mod, k = 4)
-table(Clast_number)
-people$clust <- Clast_number
-
-#визуализируем средние
-flexclust::barchart(mod, people_new, k = 4)
 
 ########################################################################################
 ##### Значения индекса через средние ######
@@ -806,14 +485,14 @@ Vmeste$Negative <- -1 *Vmeste$Negative
 Vmeste$Support <- -1 *Vmeste$Support
 Vmeste$Response <- -1 *Vmeste$Response
 Sr_new <- Sr
-Sr_new$Web <- mean[1] * Sr_new$Web
-Sr_new$Pay <- mean[2] * Sr_new$Pay
-Sr_new$Ass <- mean[3] * Sr_new$Ass
-Sr_new$Deliv <- mean[4] * Sr_new$Deliv
-Sr_new$Peop <- mean[5] * Sr_new$Peop
-Sr_new$Exp <- mean[6] * Sr_new$Exp
-Sr_new$Loyal <- mean[7] * Sr_new$Loyal
-Sr_new$Card <- mean[8] * Sr_new$Card
+Sr_new$Web <- mean_S[1] * Sr_new$Web
+Sr_new$Pay <- mean_S[2] * Sr_new$Pay
+Sr_new$Ass <- mean_S[3] * Sr_new$Ass
+Sr_new$Deliv <- mean_S[4] * Sr_new$Deliv
+Sr_new$Peop <- mean_S[5] * Sr_new$Peop
+Sr_new$Exp <- mean_S[6] * Sr_new$Exp
+Sr_new$Loyal <- mean_S[7] * Sr_new$Loyal
+Sr_new$Card <- mean_S[8] * Sr_new$Card
 
 for (i in 1:797){
   Sr_new$Index[i] <- sum(Sr_new[i,3:10])
@@ -847,8 +526,8 @@ Future <- Ozon
 ##### Значения индекса через индивид веса  ######
 #################################################
 All <- Sr %>% inner_join(new[1:9], by = "ID")
-Ind <- matrix(nrow = 481, ncol=1)
-for (i in 1:481){
+Ind <- matrix(nrow = 486, ncol=1)
+for (i in 1:486){
   Ind[i,1] <- as.matrix(All[i, 3:10]) %*% as.matrix(t(All[i, 11:18]))
   cat("iteration #", i, "\n")
 }
@@ -872,7 +551,7 @@ ggplot(Summary) +
 t.test(Index ~ Platform, data = Summary)
 
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Wildberries победил: 123 против 93
+table(Ozon$win) #Wildberries победил: 124 против 94
 
 ggplot(Step2, aes(x=Index, fill=Platform)) + geom_density(alpha=.3)+ xlab("Индекс") + ylab("Плотность")+ labs(fill = "Платформа")
 
@@ -882,6 +561,9 @@ ggplot(Step2, aes(x=Index, fill=Platform)) + geom_density(alpha=.3)+ xlab("Ин�
 Vmeste <- read_excel("Vmeste.xlsx")
 Vmeste <- Vmeste %>% select(-Fool) %>% subset(Vmeste$Fool>5)
 Vmeste <- na.omit(Vmeste)
+Vmeste$Negative <- -1 *Vmeste$Negative
+Vmeste$Support <- -1 *Vmeste$Support
+Vmeste$Response <- -1 *Vmeste$Response
 corrplot(cor(Vmeste[3:9]), addCoef.col = TRUE, p.mat = cor_p$p,sig.level = 0.10, insig='blank')
 corrplot(cor(Vmeste[10:13]), addCoef.col = TRUE, p.mat = cor_p$p,sig.level = 0.10, insig='blank') #post pay minus
 corrplot(cor(Vmeste[14:16]), addCoef.col = TRUE)
@@ -906,10 +588,10 @@ Index =~ Web + Pay + Ass + Deliv + Peop + Exp + Loyal + Card
 "
 fit <- sem(m, data = Vmeste)
 summary(fit, standardized=TRUE, fit.measures=TRUE)
-cov2cor(lavInspect(fit, what = "est")$psi)
+
 fitmeasures(fit,fit.measures="all",baseline.modle=null)
 summary(fit, rsquare = TRUE)
-W <- as.data.frame(inspect(fit, what = "std")[['lambda']])
+
 #визуализация
 semPaths(fit, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2, 
          residuals = FALSE, sizeMan = 2, what = "path", label.cex = 2.5, sizeLat = 4,
@@ -917,25 +599,22 @@ semPaths(fit, "std", edge.label.cex = 0.8, curvePivot = FALSE, rotation = 2,
 
 standardizedSolution(fit)
 
-coef <- coef(fit)
 Latent <- as.data.frame(lavPredict(fit, type = "lv"))
 corrplot(cor(Latent[1:8]), addCoef.col = TRUE)
-library(corrplot)
-?lavPredict()
 
 Vmeste <- na.omit(Vmeste)
 Latent <- as.data.frame(Latent)
 Ind_fac <- cbind(Vmeste[1:2],Latent[1:8])
 Latent <- cbind(Vmeste[1:2],Latent[1:8])
 
-Ind_fac$Web <- mean[1] * Ind_fac$Web
-Ind_fac$Pay <- mean[2] * Ind_fac$Pay
-Ind_fac$Ass <- mean[3] * Ind_fac$Ass
-Ind_fac$Deliv <- mean[4] * Ind_fac$Deliv
-Ind_fac$Peop <- mean[5] * Ind_fac$Peop
-Ind_fac$Exp <- mean[6] * Ind_fac$Exp
-Ind_fac$Loyal <- mean[7] * Ind_fac$Loyal
-Ind_fac$Card <- mean[8] * Ind_fac$Card
+Ind_fac$Web <- mean_S[1] * Ind_fac$Web
+Ind_fac$Pay <- mean_S[2] * Ind_fac$Pay
+Ind_fac$Ass <- mean_S[3] * Ind_fac$Ass
+Ind_fac$Deliv <- mean_S[4] * Ind_fac$Deliv
+Ind_fac$Peop <- mean_S[5] * Ind_fac$Peop
+Ind_fac$Exp <- mean_S[6] * Ind_fac$Exp
+Ind_fac$Loyal <- mean_S[7] * Ind_fac$Loyal
+Ind_fac$Card <- mean_S[8] * Ind_fac$Card
 
 for (i in 1:796){
   Ind_fac$Index[i] <- sum(Ind_fac[i,3:10])
@@ -971,8 +650,8 @@ ggplot(Step3, aes(x=Index, fill=Platform)) + geom_density(alpha=.3)+ xlab("Ин�
 St4 <- Latent[1:10]
 All <- St4 %>% inner_join(new[1:9], by = "ID")
 
-Ind <- matrix(nrow=481, ncol=1)
-for (i in 1:481){
+Ind <- matrix(nrow=486, ncol=1)
+for (i in 1:486){
   Ind[i,1] <- as.matrix(All[i, 3:10]) %*% as.matrix(t(All[i, 11:18]))
   cat("iteration #", i, "\n")
 }
@@ -996,7 +675,7 @@ ggplot(Summary) +
 t.test(Index ~ Platform, data = Summary)
 
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Wildberries победил: 108 против 108
+table(Ozon$win) #Wildberries победил: 109 против 109
 
 ggplot(Step4, aes(x=Index, fill=Platform)) + geom_density(alpha=.3)+ xlab("Индекс") + ylab("Плотность")+ labs(fill = "Платформа")
 
@@ -1022,7 +701,7 @@ ggplot(Fin) +
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
 table(Ozon$win) #Wildberries победил: 170 против 147
 t.test(Index ~ Platform, data = Fin)
-
+Step5 <- Fin
 ggplot(Step5, aes(x=Index, fill=Platform)) + geom_density(alpha=.3)+ xlab("Индекс") + ylab("Плотность")+ labs(fill = "Платформа")
 
 ##############################################################################
@@ -1032,7 +711,43 @@ Clust1_ID <- Full_clust[9:10] %>% subset(Full_clust$cluster == 1)
 Clust2_ID <- Full_clust[9:10] %>% subset(Full_clust$cluster == 2)
 Clust3_ID <- Full_clust[9:10] %>% subset(Full_clust$cluster == 3)
 Clust4_ID <- Full_clust[9:10] %>% subset(Full_clust$cluster == 4)
-Step5 <- Fin
+
+#кластер 1
+Clust11 <- Step1 %>% inner_join(Clust1_ID[1], by = "ID")
+Ozon <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Ozon")
+Wild <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 40|32
+t.test(Index ~ Platform, data = Step1)
+
+Clust11 <- Step2 %>% inner_join(Clust1_ID[1], by = "ID")
+Ozon <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Ozon")
+Wild <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 40|32
+t.test(Index ~ Platform, data = Step2)
+
+Clust11 <- Step3 %>% inner_join(Clust1_ID[1], by = "ID")
+Ozon <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Ozon")
+Wild <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 42|30
+t.test(Index ~ Platform, data = Step3)
+
+Clust11 <- Step4 %>% inner_join(Clust1_ID[1], by = "ID")
+Ozon <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Ozon")
+Wild <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 40|32
+t.test(Index ~ Platform, data = Step4)
 
 Clust11 <- Step5 %>% inner_join(Clust1_ID[1], by = "ID")
 Ozon <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Ozon")
@@ -1040,17 +755,91 @@ Wild <- Clust11 %>% select(-Platform) %>% subset(Clust11$Platform == "Wild")
 Ozon <- Ozon %>% inner_join(Wild, by = "ID")
 colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Победы: 40|32, 40|32, 42|30, 40|32, 42|30
-t.test(Index ~ Platform, data = Fin)
+table(Ozon$win) #Победы: 42|30
+t.test(Index ~ Platform, data = Step5)
 
-Clust13 <- Step3 %>% inner_join(Clust2_ID[1], by = "ID")
+#кластер 2
+Clust12 <- Step1 %>% inner_join(Clust2_ID[1], by = "ID")
 Ozon <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Ozon")
 Wild <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Wild")
 Ozon <- Ozon %>% inner_join(Wild, by = "ID")
 colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Победы: 33|29, 39|22, 30|32, 26|36, 26|36
-t.test(Index ~ Platform, data = Fin)
+table(Ozon$win) #Победы: 33|29
+t.test(Index ~ Platform, data = Step1)
+
+Clust12 <- Step2 %>% inner_join(Clust2_ID[1], by = "ID")
+Ozon <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Ozon")
+Wild <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы:  40|22
+t.test(Index ~ Platform, data = Step2)
+
+Clust12 <- Step3 %>% inner_join(Clust2_ID[1], by = "ID")
+Ozon <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Ozon")
+Wild <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы:26|36
+t.test(Index ~ Platform, data = Step3)
+
+Clust12 <- Step4 %>% inner_join(Clust2_ID[1], by = "ID")
+Ozon <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Ozon")
+Wild <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 27|35
+t.test(Index ~ Platform, data = Step4)
+
+Clust12 <- Step5 %>% inner_join(Clust2_ID[1], by = "ID")
+Ozon <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Ozon")
+Wild <- Clust12 %>% select(-Platform) %>% subset(Clust12$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 28|34
+t.test(Index ~ Platform, data = Step5)
+
+#кластер 3
+Clust13 <- Step1 %>% inner_join(Clust3_ID[1], by = "ID")
+Ozon <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Ozon")
+Wild <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил: 28|28
+t.test(Index ~ Platform, data = Step1)
+
+Clust13 <- Step2 %>% inner_join(Clust3_ID[1], by = "ID")
+Ozon <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Ozon")
+Wild <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил: 27|29
+t.test(Index ~ Platform, data = Step2)
+
+Clust13 <- Step3 %>% inner_join(Clust3_ID[1], by = "ID")
+Ozon <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Ozon")
+Wild <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил: 29|27
+t.test(Index ~ Platform, data = Step3)
+
+Clust13 <- Step4 %>% inner_join(Clust3_ID[1], by = "ID")
+Ozon <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Ozon")
+Wild <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил:  27|29
+t.test(Index ~ Platform, data = Step4)
 
 Clust13 <- Step5 %>% inner_join(Clust3_ID[1], by = "ID")
 Ozon <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Ozon")
@@ -1058,8 +847,45 @@ Wild <- Clust13 %>% select(-Platform) %>% subset(Clust13$Platform == "Wild")
 Ozon <- Ozon %>% inner_join(Wild, by = "ID")
 colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Oзон победил: 28|28, 27|28, 29|27, 27|28, 27|29 
-t.test(Index ~ Platform, data = Fin)
+table(Ozon$win) #Oзон победил: 27|29 
+t.test(Index ~ Platform, data = Step5)
+
+#кластер 4
+Clust14 <- Step1 %>% inner_join(Clust4_ID[1], by = "ID")
+Ozon <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Ozon")
+Wild <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил: 20|8
+t.test(Index ~ Platform, data = Step1)
+
+Clust14 <- Step2 %>% inner_join(Clust4_ID[1], by = "ID")
+Ozon <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Ozon")
+Wild <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил: 17|11
+t.test(Index ~ Platform, data = Step2)
+
+Clust14 <- Step3 %>% inner_join(Clust4_ID[1], by = "ID")
+Ozon <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Ozon")
+Wild <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил: 12|16
+t.test(Index ~ Platform, data = Step3)
+
+Clust14 <- Step4 %>% inner_join(Clust4_ID[1], by = "ID")
+Ozon <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Ozon")
+Wild <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Oзон победил: 15|13
+t.test(Index ~ Platform, data = Step4)
 
 Clust14 <- Step5 %>% inner_join(Clust4_ID[1], by = "ID")
 Ozon <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Ozon")
@@ -1067,8 +893,8 @@ Wild <- Clust14 %>% select(-Platform) %>% subset(Clust14$Platform == "Wild")
 Ozon <- Ozon %>% inner_join(Wild, by = "ID")
 colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Oзон победил: 20|8, 17|11, 12|16, 15|13, 14|14
-t.test(Index ~ Platform, data = Step1)
+table(Ozon$win) #Oзон победил: 14|14
+t.test(Index ~ Platform, data = Step5)
 
 ###################################################################################
 ####### Победы внутри кластеров по дем характеристикам #####
@@ -1077,14 +903,88 @@ Dem <- people[, c(1,38)]
 Clust1 <- Dem %>% subset(Dem$clust ==1)
 Clust2 <- Dem %>% subset(Dem$clust ==2)
 
+#кластер 1
+Clust21 <- Step1 %>% inner_join(Clust1[1], by = "ID")
+Ozon <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Ozon")
+Wild <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 82|69
+t.test(Index ~ Platform, data = Step1)
+
+Clust21 <- Step2 %>% inner_join(Clust1[1], by = "ID")
+Ozon <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Ozon")
+Wild <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 64|51
+t.test(Index ~ Platform, data = Step2)
+
+Clust21 <- Step3 %>% inner_join(Clust1[1], by = "ID")
+Ozon <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Ozon")
+Wild <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 73|78
+t.test(Index ~ Platform, data = Step3)
+
+Clust21 <- Step4 %>% inner_join(Clust1[1], by = "ID")
+Ozon <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Ozon")
+Wild <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 52|63
+t.test(Index ~ Platform, data = Step4)
+
 Clust21 <- Step5 %>% inner_join(Clust1[1], by = "ID")
 Ozon <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Ozon")
 Wild <- Clust21 %>% select(-Platform) %>% subset(Clust21$Platform == "Wild")
 Ozon <- Ozon %>% inner_join(Wild, by = "ID")
 colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Oзон победил: 82|69, 64|51, 73|78, 52|63, 73|78
+table(Ozon$win) #Победы: 73|78
+t.test(Index ~ Platform, data = Step5)
+
+#кластер 2
+Clust22 <- Step1 %>% inner_join(Clust2[1], by = "ID")
+Ozon <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Ozon")
+Wild <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 72|41
 t.test(Index ~ Platform, data = Step1)
+
+Clust22 <- Step2 %>% inner_join(Clust2[1], by = "ID")
+Ozon <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Ozon")
+Wild <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 53|34
+t.test(Index ~ Platform, data = Step2)
+
+Clust22 <- Step3 %>% inner_join(Clust2[1], by = "ID")
+Ozon <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Ozon")
+Wild <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 66|47
+t.test(Index ~ Platform, data = Step3)
+
+Clust22 <- Step4 %>% inner_join(Clust2[1], by = "ID")
+Ozon <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Ozon")
+Wild <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Wild")
+Ozon <- Ozon %>% inner_join(Wild, by = "ID")
+colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
+Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
+table(Ozon$win) #Победы: 50|37
+t.test(Index ~ Platform, data = Step4)
 
 Clust22 <- Step5 %>% inner_join(Clust2[1], by = "ID")
 Ozon <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Ozon")
@@ -1092,93 +992,12 @@ Wild <- Clust22 %>% select(-Platform) %>% subset(Clust22$Platform == "Wild")
 Ozon <- Ozon %>% inner_join(Wild, by = "ID")
 colnames(Ozon) <- c("ID", "Ind_Ozon", "Ind_Wild")
 Ozon$win <- ifelse(Ozon$Ind_Ozon - Ozon$Ind_Wild > 0, 1, 0)
-table(Ozon$win) #Oзон победил: 72|41, 53|34, 66|47, 50|37, 70|43
-t.test(Index ~ Platform, data = Step1)
-
-
-Data <- read_excel("Srednee.xlsx")
-Data <- Data %>% select(-Fool) %>% subset(Data$Fool > 5)
-Ozon_mean <- First %>% subset(First$Platform == "Ozon")
-mean1 <- colMeans(Ozon_mean[3:10])
-
-Wild_mean <- First %>% subset(First$Platform == "Wild")
-mean2 <- colMeans(Wild_mean[3:10])
-
-First <- Sr %>% inner_join(Clust3_ID[1], by = "ID")
-
-Reg_Ozon <- Latent %>% subset(Latent$Platform == "Wild")
-colnames(Reg)[36] <- "Web"
-Reg <- Reg_Ozon[3:11]
-mod <- lm(Index ~ ., data = Reg)
-summary(mod)
-coef <- mod$coefficients[2:8]
-coef <- coef/sum(coef)
-
-
-#######################################################################3
-####### Посмотрим среди групп, где кто победил #####
-####################################################
-Ozon_win <- Future %>% subset(Future$win == 1)
-Wild_win <- Future %>% subset(Future$win == 0)
-
-Ozon_ID <- Ozon_win[1]
-Wild_ID <- Wild_win[1]
-
-Sr_Ozon <- Latent %>% subset(Sr$Platform == "Ozon")%>% inner_join(Ozon_ID, by = "ID") 
-a <- colMeans(Sr_Ozon[3:10])
-a <- a**2/sum(a**2)
-Sr_Wild <- Latent %>% subset(Sr$Platform == "Wild")%>% inner_join(Wild_ID, by = "ID")
-b <- colMeans(Sr_Wild[3:10])
-b <- b**2/sum(b**2)
+table(Ozon$win) #Победы: 70|43
+t.test(Index ~ Platform, data = Step5)
 
 ##################################################
-#### Предпочтения внутри групп по победам ########
+#### Регрессии ########
 ##################################################
-Ozon_Saaty <- Saaty %>% inner_join(Ozon_ID, by = "ID")
-Wild_Saaty <- Saaty %>% inner_join(Wild_ID, by = "ID")
-
-Index <- Wild_Saaty[2:29]
-att <- c("Web", "Pay", "Ass", "Deliv", "Peop", "Exp", "Loyal", "Card")
-
-cr <- Index %>% 
-  ahp.mat(atts = att, negconvert = TRUE) %>% 
-  ahp.cr(att)
-mean(cr)
-CR10 <- data.frame(Index,cr)
-CR10 <- CR10 %>% select(-cr) %>% subset(CR10$cr <= 0.1)
-Index <- CR10
-#матрицы парных сравнений
-Ind_ahp <- Index %>% 
-  ahp.mat(att, negconvert = T)
-
-#Коррекция Харкера
-edited <- ahp.harker(Ind_ahp, att, iterations = 3, stopcr = 0.1)
-cr <- edited %>% 
-  ahp.cr(att)
-mean(cr)
-
-#средние оценки
-mean <- Index %>%
-  ahp.mat(atts = att, negconvert = TRUE) %>% 
-  ahp.aggpref(att, method = "eigen")
-
-#скорректированные средние
-mean <- edited %>% 
-  ahp.aggpref(att, method = "eigen")
-sum(mean)
-mean <- mean/sum(mean)
-mean
-
-
-#сравним
-error <- ahp.error(Ind_ahp, att, reciprocal = TRUE)
-error
-
-#что описывается хуже всего?
-Index %>%
-  ahp.mat(att) %>%
-  ahp.pwerror(att)
-
 Index_all <- as.data.frame(lavPredict(fit))
 Index_all <- data.frame(Vmeste[1:2],Index_all$Index)
 colnames(Index_all)[3] <- "Index"
@@ -1186,8 +1005,6 @@ colnames(Index_all)[3] <- "Index"
 End <- Index_all %>% inner_join(new[1:9], by = "ID")
 End <- End %>% inner_join(Saaty[,c(1, 30:37)], by = "ID")
 End$Platform <- as.factor(End$Platform)
-End1 <- End
-End1$Index <- abs(End1$Index)
 
 model <- lm(Index ~ ., data = End)
 summary(model)
@@ -1240,7 +1057,6 @@ stargazer(mod2, mod23,
           title="Влияние предпочтений", type="text", 
           column.labels=c("Ozon", "Wildberries"), 
           df=FALSE, digits=3, out = "All data ols.txt")
-?stargazer
 
 ################################################################
 ###### Корреляционная матрица факторов и весов #######
@@ -1253,7 +1069,6 @@ cor_p <- cor.mtest(Block1[3:18], conf.level = 0.95)
 corrplot(cor(Block1[3:18]), addgrid.col = TRUE, addCoef.col = TRUE,
          type = 'lower', method = 'color',
          p.mat = cor_p$p, sig.level = 0.10, insig='blank')
-?corrplot()
 
 #################################################################
 ##### Плотности распределния #################
@@ -1296,10 +1111,13 @@ datasummary_balance(~Platform, Sred, output = "gt", stars = TRUE)
 Sr_O <- Sr
 datasummary_balance(~Platform, Sr_O, output = "gt", stars = TRUE, dinm_statistic = "p.value")
 
+####################################################################
+###### Альфы Кронбаха ######
+############################
 install.packages("ltm")
 library(ltm)
+Vmeste <- na.omit(read_excel("Vmeste.xlsx"))
 cronbach.alpha(Latent[3:9])
-
 cronbach.alpha(Vmeste[3:9])
 cronbach.alpha(Vmeste[10:13])
 cronbach.alpha(Vmeste[, c(10,11,13)])
